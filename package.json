@@ -1,7 +1,7 @@
 {
   "name": "belajar-nodejs-dasar",
   "version": "1.0.0",
-  "description": "Konversi contoh Spring Boot dasar ke Node.js + Express (simple)",
+  "description": "Node.js + Express (simple)",
   "main": "app.js",
   "scripts": {
     "dev": "nodemon app.js",
