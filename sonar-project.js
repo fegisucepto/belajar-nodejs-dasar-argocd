@@ -8,13 +8,13 @@ scanner(
       'sonar.organization': 'fegisucepto',
       'sonar.projectKey': 'fegisucepto_belajar-nodejs-dasar',
       'sonar.projectName': 'belajar-nodejs-dasar',
-      'sonar.sources': 'src',
+      'sonar.sources': '.',
       'sonar.sourceEncoding': 'UTF-8',
       'sonar.exclusions': 'node_modules/**,**/*.test.js,**/*.spec.js,coverage/**,dist/**,**/__tests__/**,**/test/**',
       'sonar.javascript.lcov.reportPaths': 'coverage/lcov.info',
       'sonar.scm.disabled': 'true',
       'sonar.qualitygate.wait': 'true',
-      'sonar.analysis.ci': 'true'  // Menandakan ini adalah analisis CI
+      'sonar.analysis.ci': 'true'
     }
   },
   (result) => {
