@@ -75,12 +75,3 @@ jobs:
             Branch: ${{ github.ref_name }}
             Commit: ${{ github.sha }}
             Lihat detail: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-      
-      # 9. Run SonarQube
-      - name: SonarQube Scan
-        if: success()
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npm run sonar
-      

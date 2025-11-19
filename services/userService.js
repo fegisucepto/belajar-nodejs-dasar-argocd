@@ -1,30 +1,29 @@
-const userRepo = require('../repositories/userRepository');
+const userRepository = require('../repositories/userRepository');
 
-class UserService {
-  getAllUsers() {
-    return userRepo.findAll();
-  }
-
-  getUserById(id) {
-    return userRepo.findById(id);
-  }
-
-  createUser(payload) {
-    if (!payload.name || !payload.email) {
-      const err = new Error('name and email required');
-      err.status = 400;
-      throw err;
-    }
-    return userRepo.save(payload);
-  }
-
-  updateUser(id, payload) {
-    return userRepo.update(id, payload);
-  }
-
-  deleteUser(id) {
-    return userRepo.delete(id);
-  }
+async function getAllUsers() {
+  return userRepository.findAll();
 }
 
-module.exports = new UserService();
+async function getUserById(id) {
+  return userRepository.findById(id);
+}
+
+async function createUser(userData) {
+  return userRepository.create(userData);
+}
+
+async function updateUser(id, userData) {
+  return userRepository.update(id, userData);
+}
+
+async function deleteUser(id) {
+  return userRepository.delete(id);
+}
+
+module.exports = {
+  getAllUsers,
+  getUserById,
+  createUser,
+  updateUser,
+  deleteUser
+};

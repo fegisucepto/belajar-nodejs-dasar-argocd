@@ -1,41 +1,88 @@
 const userService = require('../services/userService');
 
-async function getAll(req, res, next) {
+// Get all users
+async function getAllUsers(req, res, next) {
   try {
-    const users = userService.getAllUsers();
-    res.json(users);
-  } catch (e) { next(e); }
+    const users = await userService.getAllUsers();
+    // Map users to exclude sensitive data
+    const sanitizedUsers = users.map(user => ({
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt
+    }));
+    res.json(sanitizedUsers);
+  } catch (error) {
+    next(error);
+  }
 }
 
+// Get user by ID
 async function getById(req, res, next) {
   try {
-    const user = userService.getUserById(req.params.id);
-    if (!user) return res.status(404).json({ message: 'User not found' });
-    res.json(user);
-  } catch (e) { next(e); }
+    const user = await userService.getUserById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    // Return user data without password
+    const { _id, name, email, createdAt, updatedAt } = user;
+    res.json({ _id, name, email, createdAt, updatedAt });
+  } catch (error) {
+    next(error);
+  }
 }
 
-async function create(req, res, next) {
+// Create new user
+async function createUser(req, res, next) {
   try {
-    const created = userService.createUser(req.body);
-    res.status(201).json(created);
-  } catch (e) { next(e); }
+    const user = await userService.createUser(req.body);
+    // Return user data without password
+    const { _id, name, email, createdAt, updatedAt } = user;
+    res.status(201).json({ _id, name, email, createdAt, updatedAt });
+  } catch (error) {
+    if (error.name === 'ValidationError') {
+      error.statusCode = 400;
+    }
+    next(error);
+  }
 }
 
-async function update(req, res, next) {
+// Update user
+async function updateUser(req, res, next) {
   try {
-    const updated = userService.updateUser(req.params.id, req.body);
-    if (!updated) return res.status(404).json({ message: 'User not found' });
-    res.json(updated);
-  } catch (e) { next(e); }
+    const user = await userService.updateUser(req.params.id, req.body);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    // Return updated user data without password
+    const { _id, name, email, createdAt, updatedAt } = user;
+    res.json({ _id, name, email, createdAt, updatedAt });
+  } catch (error) {
+    if (error.name === 'ValidationError') {
+      error.statusCode = 400;
+    }
+    next(error);
+  }
 }
 
-async function remove(req, res, next) {
+// Delete user
+async function deleteUser(req, res, next) {
   try {
-    const ok = userService.deleteUser(req.params.id);
-    if (!ok) return res.status(404).json({ message: 'User not found' });
+    const result = await userService.deleteUser(req.params.id);
+    if (!result) {
+      return res.status(404).json({ message: 'User not found' });
+    }
     res.json({ deleted: true });
-  } catch (e) { next(e); }
+  } catch (error) {
+    next(error);
+  }
 }
 
-module.exports = { getAll, getById, create, update, remove };
+module.exports = {
+  getAllUsers,
+  getById,
+  createUser,
+  update: updateUser,
+  delete: deleteUser
+};
