@@ -3,7 +3,7 @@ const scanner = require('sonarqube-scanner').default;
 scanner(
   {
     serverUrl: 'https://sonarcloud.io',
-    token: process.env.SONAR_TOKEN,  // Gunakan token dari environment variable
+    token: process.env.SONAR_TOKEN,
     options: {
       'sonar.organization': 'fegisucepto',
       'sonar.projectKey': 'fegisucepto_belajar-nodejs-dasar',
@@ -16,8 +16,15 @@ scanner(
       'sonar.scm.disabled': 'true',
       'sonar.scm.provider': 'git',
       'sonar.scm.exclusions.disabled': 'true',
-      'sonar.qualitygate.wait': 'true'  // Tunggu hasil quality gate
+      'sonar.qualitygate.wait': 'true',
+      'sonar.host.url': 'https://sonarcloud.io'  // Tambahkan ini
     },
   },
-  () => process.exit()
-);
+  (result) => {
+    console.log('SonarQube analysis finished');
+    process.exit(0);
+  }
+).catch(err => {
+  console.error('Error during SonarQube analysis:', err);
+  process.exit(1);
+});
