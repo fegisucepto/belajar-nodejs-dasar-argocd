@@ -6,7 +6,7 @@ describe('User Model', () => {
     const userData = {
       name: 'Test User',
       email: 'test@example.com',
-      password: 'password123'
+      password: 'password123',
     };
 
     const user = new User(userData);
@@ -21,7 +21,7 @@ describe('User Model', () => {
   it('should require name field', async () => {
     const user = new User({
       email: 'test@example.com',
-      password: 'password123'
+      password: 'password123',
     });
 
     let error;
@@ -38,7 +38,7 @@ describe('User Model', () => {
   it('should require email field', async () => {
     const user = new User({
       name: 'Test User',
-      password: 'password123'
+      password: 'password123',
     });
 
     let error;
@@ -56,7 +56,7 @@ describe('User Model', () => {
     const user = new User({
       name: 'Test User',
       email: 'invalid-email',
-      password: 'password123'
+      password: 'password123',
     });
 
     let error;

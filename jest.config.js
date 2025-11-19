@@ -13,15 +13,14 @@ module.exports = {
     '!app.js',
     '!**/__tests__/**',
     '!sonar-project.js',
-    '!**/__mocks__/**'
+    '!**/__mocks__/**',
   ],
   coverageThreshold: {
     global: {
       branches: 20,
       functions: 20,
       lines: 20,
-      statements: 20
-    }
-  }
+      statements: 20,
+    },
+  },
 };
-

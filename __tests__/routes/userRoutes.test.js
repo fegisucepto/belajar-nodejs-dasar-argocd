@@ -7,26 +7,26 @@ describe('User Routes', () => {
   let server;
   let testUser;
   let userService;
-  
+
   beforeAll(async () => {
     server = app.listen(0);
     await User.deleteMany({});
     userService = require('../../services/userService');
   });
-  
+
   afterAll(async () => {
     await User.deleteMany({});
     await server.close();
   });
-  
+
   beforeEach(async () => {
     testUser = await User.create({
       name: 'Test User',
       email: 'test@example.com',
-      password: 'password123'
+      password: 'password123',
     });
   });
-  
+
   afterEach(async () => {
     await User.deleteMany({});
   });
@@ -36,19 +36,19 @@ describe('User Routes', () => {
       await User.create({
         name: 'Another User',
         email: 'another@example.com',
-        password: 'password123'
+        password: 'password123',
       });
 
       const response = await request(server).get('/api/users');
       expect(response.status).toBe(200);
       expect(Array.isArray(response.body)).toBe(true);
       expect(response.body.length).toBe(2);
-      
-      const foundUser = response.body.find(u => u._id === testUser._id.toString());
+
+      const foundUser = response.body.find((u) => u._id === testUser._id.toString());
       expect(foundUser).toBeDefined();
       expect(foundUser).toMatchObject({
         name: testUser.name,
-        email: testUser.email
+        email: testUser.email,
       });
       expect(foundUser).not.toHaveProperty('password');
     });
@@ -78,7 +78,7 @@ describe('User Routes', () => {
       const newUser = {
         name: 'New User',
         email: 'new@example.com',
-        password: 'password123'
+        password: 'password123',
       };
 
       const response = await request(server)
@@ -88,7 +88,7 @@ describe('User Routes', () => {
       expect(response.status).toBe(201);
       expect(response.body).toMatchObject({
         name: newUser.name,
-        email: newUser.email
+        email: newUser.email,
       });
       expect(response.body).not.toHaveProperty('password');
     });
@@ -96,10 +96,10 @@ describe('User Routes', () => {
     it('should return 400 for invalid user data', async () => {
       const response = await request(server)
         .post('/api/users')
-        .send({ 
-          name: '', 
+        .send({
+          name: '',
           email: 'invalid-email',
-          password: '123'
+          password: '123',
         });
 
       expect(response.status).toBe(400);
@@ -111,12 +111,12 @@ describe('User Routes', () => {
   describe('GET /api/users/:id', () => {
     it('should get a single user', async () => {
       const response = await request(server).get(`/api/users/${testUser._id.toString()}`);
-      
+
       expect(response.status).toBe(200);
       expect(response.body).toMatchObject({
         _id: testUser._id.toString(),
         name: testUser.name,
-        email: testUser.email
+        email: testUser.email,
       });
       expect(response.body).not.toHaveProperty('password');
     });
@@ -139,7 +139,7 @@ describe('User Routes', () => {
     it('should update an existing user', async () => {
       const updateData = {
         name: 'Updated Name',
-        email: 'updated@example.com'
+        email: 'updated@example.com',
       };
 
       const response = await request(server)
@@ -149,7 +149,7 @@ describe('User Routes', () => {
       expect(response.status).toBe(200);
       expect(response.body).toMatchObject({
         _id: testUser._id.toString(),
-        ...updateData
+        ...updateData,
       });
     });
 
@@ -188,7 +188,7 @@ describe('User Routes', () => {
       const userToDelete = await User.create({
         name: 'To Delete',
         email: 'delete@example.com',
-        password: 'password123'
+        password: 'password123',
       });
 
       const response = await request(server).delete(`/api/users/${userToDelete._id.toString()}`);
@@ -209,7 +209,7 @@ describe('User Routes', () => {
     it('should return 404 if user not found', async () => {
       const nonExistentId = new mongoose.Types.ObjectId();
       const response = await request(server).delete(`/api/users/${nonExistentId}`);
-      
+
       expect(response.status).toBe(404);
       expect(response.body).toHaveProperty('message', 'User not found');
     });

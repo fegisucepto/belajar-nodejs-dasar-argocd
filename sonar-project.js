@@ -14,14 +14,14 @@ scanner(
       'sonar.javascript.lcov.reportPaths': 'coverage/lcov.info',
       'sonar.scm.disabled': 'true',
       'sonar.qualitygate.wait': 'true',
-      'sonar.analysis.ci': 'true'
-    }
+      'sonar.analysis.ci': 'true',
+    },
   },
   (result) => {
-    console.log('SonarQube analysis finished');
+    console.log('SonarQube analysis finished', result);
     process.exit(0);
-  }
-).catch(err => {
+  },
+).catch((err) => {
   console.error('Error during SonarQube analysis:', err);
   process.exit(1);
 });

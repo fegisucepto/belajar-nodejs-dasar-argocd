@@ -4,7 +4,7 @@ const mockUser = {
   email: 'test@example.com',
   password: 'hashedpassword',
   save: jest.fn().mockResolvedValue(this),
-  toObject: jest.fn().mockReturnThis()
+  toObject: jest.fn().mockReturnThis(),
 };
 
 // Mock static methods

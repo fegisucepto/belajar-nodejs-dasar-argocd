@@ -15,9 +15,9 @@ async function create(userData) {
 
 async function update(id, userData) {
   return User.findByIdAndUpdate(
-    id, 
-    userData, 
-    { new: true, runValidators: true }
+    id,
+    userData,
+    { new: true, runValidators: true },
   ).lean().exec();
 }
 
@@ -31,5 +31,5 @@ module.exports = {
   findById,
   create,
   update,
-  delete: deleteUser
+  delete: deleteUser,
 };
