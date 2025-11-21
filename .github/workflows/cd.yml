@@ -79,13 +79,29 @@ jobs:
           minikube addons enable ingress || true
           minikube addons enable metrics-server || true
 
-      - name: Configure kubeconfig
+      - name: Configure kubeconfig (minikube or external)
         run: |
-          mkdir -p ~/.kube
-          echo "${{ secrets.KUBE_CONFIG }}" > ~/.kube/config
-          chmod 600 ~/.kube/config
-          minikube update-context || true
-          kubectl config set-cluster minikube --insecure-skip-tls-verify=true || true
+          set -euo pipefail
+          if [ -n "${{ secrets.KUBE_CONFIG }}" ]; then
+            echo "Using external kubeconfig from secrets"
+            mkdir -p ~/.kube
+            echo "${{ secrets.KUBE_CONFIG }}" > ~/.kube/config
+            chmod 600 ~/.kube/config
+            # show minimized view but don't fail the job if cluster is unreachable
+            kubectl config view --minify || true
+            kubectl cluster-info || true
+            kubectl get nodes || true
+          else
+            echo "No external kubeconfig provided — using minikube context"
+            minikube update-context
+            kubectl cluster-info
+            kubectl get nodes
+          fi
+
+      - name: Show kubectl context (debug)
+        run: |
+          kubectl config current-context || true
+          kubectl config view --minify || true
           kubectl cluster-info || true
           kubectl get nodes || true
 
