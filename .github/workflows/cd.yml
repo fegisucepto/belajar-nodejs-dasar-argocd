@@ -57,6 +57,11 @@ jobs:
       url: ${{ steps.deploy.outputs.url }}
     steps:
       - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gettext-base
       
       - name: Install kubectl and minikube
         run: |
@@ -86,13 +91,17 @@ jobs:
       
       - name: Deploy to Kubernetes
         id: deploy
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          TAG: ${{ steps.get_tag.outputs.tag_name }}
         run: |
           # Create namespace
           kubectl create namespace belajar-nodejs --dry-run=client -o yaml | kubectl apply -f -
-          
-          # Apply manifests
-          kubectl apply -f k8s/ --insecure-skip-tls-verify=true
-          
+    
+          # Process and apply deployment with envsubst
+          envsubst < k8s/deployment.yaml | kubectl apply -f -
+          kubectl apply -f k8s/service.yaml
+    
           # Debug pods
           kubectl get pods -n belajar-nodejs -w &
           kubectl describe deployment belajar-nodejs-dasar -n belajar-nodejs
@@ -116,7 +125,7 @@ jobs:
           minikube logs
           kubectl version --client
           kubectl cluster-info
-          
+
   notify:
     needs: [build-and-push, deploy]
     if: always()

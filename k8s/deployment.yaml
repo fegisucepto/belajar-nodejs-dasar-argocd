@@ -15,7 +15,8 @@ spec:
     spec:
       containers:
       - name: app
-        image: $DOCKERHUB_USERNAME/belajar-nodejs-dasar:latest
+        image: $DOCKERHUB_USERNAME/belajar-nodejs-dasar:$TAG
+        imagePullPolicy: Always
         ports:
         - containerPort: 3000
         env:
@@ -23,13 +24,13 @@ spec:
           value: "production"
         livenessProbe:
           httpGet:
-            path: /  # Update this to your health check endpoint
+            path: /
             port: 3000
           initialDelaySeconds: 30
           periodSeconds: 10
         readinessProbe:
           httpGet:
-            path: /  # Update this to your health check endpoint
+            path: /
             port: 3000
           initialDelaySeconds: 5
           periodSeconds: 5
