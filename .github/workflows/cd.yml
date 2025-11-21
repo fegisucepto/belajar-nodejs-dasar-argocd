@@ -48,6 +48,10 @@ jobs:
   deploy:
     needs: build-and-push
     runs-on: ubuntu-latest
+    # Add environment variables here
+    env:
+      KUBECONFIG: ~/.kube/config
+      MINIKUBE_HOME: ${{ github.workspace }}/.minikube
     environment:
       name: ${{ contains(github.ref, 'release/') && 'staging' || 'production' }}
       url: ${{ steps.deploy.outputs.url }}
@@ -73,19 +77,21 @@ jobs:
           mkdir -p ~/.kube
           echo "${{ secrets.KUBE_CONFIG }}" > ~/.kube/config
           chmod 600 ~/.kube/config
-          kubectl config view
+          # Fix certificate issues
+          minikube update-context
+          kubectl config set-cluster minikube --insecure-skip-tls-verify=true
+          # Verify connection
           kubectl cluster-info
           kubectl get nodes
-          kubectl get pods -A
       
       - name: Deploy to Kubernetes
         id: deploy
         run: |
           kubectl create namespace belajar-nodejs --dry-run=client -o yaml | kubectl apply -f -
-          kubectl apply -f k8s/
-          kubectl rollout status deployment/belajar-nodejs-dasar -n belajar-nodejs --timeout=90s
-          echo "url=http://$(minikube ip):$(kubectl get svc belajar-nodejs-dasar -n belajar-nodejs -o jsonpath='{.spec.ports[0].nodePort}')" >> $GITHUB_OUTPUT
-
+          kubectl apply -f k8s/ --insecure-skip-tls-verify=true
+          kubectl rollout status deployment/belajar-nodejs-dasar -n belajar-nodejs --timeout=90s --insecure-skip-tls-verify=true
+          echo "url=http://$(minikube ip):$(kubectl get svc belajar-nodejs-dasar -n belajar-nodejs -o jsonpath='{.spec.ports[0].nodePort}' --insecure-skip-tls-verify=true)" >> $GITHUB_OUTPUT
+      
   notify:
     needs: [build-and-push, deploy]
     if: always()
