@@ -87,11 +87,36 @@ jobs:
       - name: Deploy to Kubernetes
         id: deploy
         run: |
+          # Create namespace
           kubectl create namespace belajar-nodejs --dry-run=client -o yaml | kubectl apply -f -
+          
+          # Apply manifests
           kubectl apply -f k8s/ --insecure-skip-tls-verify=true
-          kubectl rollout status deployment/belajar-nodejs-dasar -n belajar-nodejs --timeout=90s --insecure-skip-tls-verify=true
+          
+          # Debug pods
+          kubectl get pods -n belajar-nodejs -w &
+          kubectl describe deployment belajar-nodejs-dasar -n belajar-nodejs
+          kubectl get events -n belajar-nodejs --sort-by='.lastTimestamp'
+    
+          # Wait for deployment with timeout
+          timeout 180 kubectl rollout status deployment/belajar-nodejs-dasar -n belajar-nodejs --timeout=90s --insecure-skip-tls-verify=true || true
+    
+          # Get pod logs if deployment fails
+          if [ $? -ne 0 ]; then
+            echo "Deployment failed, showing pod logs:"
+            kubectl logs -n belajar-nodejs -l app=belajar-nodejs-dasar --tail=50 || true
+            exit 1
+          fi
+    
           echo "url=http://$(minikube ip):$(kubectl get svc belajar-nodejs-dasar -n belajar-nodejs -o jsonpath='{.spec.ports[0].nodePort}' --insecure-skip-tls-verify=true)" >> $GITHUB_OUTPUT
-      
+
+      - name: Debug Minikube
+        run: |
+          minikube status
+          minikube logs
+          kubectl version --client
+          kubectl cluster-info
+          
   notify:
     needs: [build-and-push, deploy]
     if: always()
