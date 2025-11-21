@@ -133,7 +133,7 @@ jobs:
           echo "=== MINIKUBE STATUS ==="
           minikube status
           echo "=== K8S VERSION ==="
-          kubectl version --short
+          kubectl version  # Hapus --short
           echo "=== NODES ==="
           kubectl get nodes -v=6
           echo "=== CLUSTER INFO ==="
