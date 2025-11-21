@@ -25,7 +25,6 @@ spec:
         - name: PORT
           value: "3000"
         - name: MONGO_URI
-          # Default points to in-cluster mongo service; override via envsubst or secret if needed
           value: "mongodb://mongo:27017/belajar-nodejs"
         resources:
           requests:
@@ -38,15 +37,11 @@ spec:
           httpGet:
             path: /health
             port: 3000
-          initialDelaySeconds: 120
-          timeoutSeconds: 5
-          periodSeconds: 20
-          failureThreshold: 6
+          initialDelaySeconds: 30
+          periodSeconds: 10
         readinessProbe:
           httpGet:
             path: /health
             port: 3000
-          initialDelaySeconds: 60
-          timeoutSeconds: 5
-          periodSeconds: 10
-          failureThreshold: 6
+          initialDelaySeconds: 5
+          periodSeconds: 5

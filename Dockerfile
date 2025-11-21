@@ -1,29 +1,27 @@
-# Dockerfile
 FROM node:18-alpine
 
 # Working directory
 WORKDIR /app
 
-# Copy package files (destination is directory => end with /)
+# Copy package files
 COPY package*.json ./
 
-# Install production deps (use npm ci if lockfile exists)
+# Install production dependencies
 RUN if [ -f package-lock.json ]; then npm ci --production; else npm install --production; fi && npm cache clean --force
 
-# Create non-root user
-RUN addgroup -g 1001 -S nodejs && adduser -S nodejs -u 1001
-
 # Copy app files and set owner to non-root user
-COPY --chown=nodejs:nodejs . .
+COPY --chown=node:node . .
 
-# Set env defaults
+# Set environment variables
 ENV NODE_ENV=production
 ENV PORT=3000
-ENV MONGO_URI=mongodb://localhost:27017/belajar-nodejs
+ENV MONGO_URI=mongodb://mongo:27017/belajar-nodejs
 
-USER nodejs
+# Switch to non-root user
+USER node
 
+# Expose the app port
 EXPOSE 3000
 
-# Start the app — ensure package.json start points to app.js
+# Start the application
 CMD ["npm", "start"]

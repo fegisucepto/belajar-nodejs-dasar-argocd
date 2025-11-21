@@ -66,83 +66,88 @@ jobs:
 
       - name: Install kubectl and minikube
         run: |
+          # Install kubectl
           curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
           chmod +x kubectl
           sudo mv kubectl /usr/local/bin/
+          
+          # Install minikube
           curl -LO https://github.com/kubernetes/minikube/releases/latest/download/minikube-linux-amd64
           sudo install minikube-linux-amd64 /usr/local/bin/minikube
 
-      - name: Start Minikube (embed certs)
+      - name: Start Minikube
         run: |
-          # start minikube and embed certs into kubeconfig so kubectl can verify server cert
-          minikube start --driver=docker --force --embed-certs=true
-          minikube addons enable ingress || true
-          minikube addons enable metrics-server || true
+          # Hentikan Minikube jika sudah berjalan
+          minikube delete || true
+          
+          # Mulai Minikube dengan opsi yang diperlukan
+          minikube start \
+            --driver=docker \
+            --force \
+            --embed-certs=true \
+            --container-runtime=containerd \
+            --nodes=1 \
+            --cpus=2 \
+            --memory=4g \
+            --disk-size=20g \
+            --addons=ingress,metrics-server
+          
+          # Tunggu Minikube siap
+          minikube status
+          minikube kubectl -- get nodes
 
-          # ensure wrapper commands (minikube kubectl -- ...) work
+      - name: Fix kubeconfig
+        run: |
+          # Backup kubeconfig asli
+          mkdir -p ~/.kube
           minikube update-context
+          minikube kubectl -- config view --flatten > ~/.kube/config
+          chmod 600 ~/.kube/config
 
-          # wait until API server responds (longer wait for CI)
-          echo "Waiting for Kubernetes API to be ready..."
-          for i in $(seq 1 60); do
-            minikube kubectl -- get --raw='/healthz' >/dev/null 2>&1 && break || sleep 3
-          done
-          echo "minikube should be ready"
-
-      - name: Configure kubeconfig (minikube or external)
+      - name: Verify cluster status
         run: |
-          set -euo pipefail
-          if [ -n "${{ secrets.KUBE_CONFIG }}" ]; then
-            echo "Using external kubeconfig from secrets"
-            mkdir -p ~/.kube
-            echo "${{ secrets.KUBE_CONFIG }}" > ~/.kube/config
-            chmod 600 ~/.kube/config
-            # show minimized view but don't fail the job if cluster is unreachable
-            kubectl config view --minify || true
-            kubectl cluster-info || true
-            kubectl get nodes || true
-          else
-            echo "No external kubeconfig provided — using minikube wrapper for kubectl"
-            # We'll use `minikube kubectl --` to avoid kubeconfig CA issues
-            minikube update-context || true
-            minikube kubectl -- get nodes || true
-          fi
+          kubectl config view
+          kubectl cluster-info
+          kubectl get nodes
+          kubectl get pods -A
 
-      - name: Show kubectl context (debug)
-        run: |
-          # show whatever kubectl currently sees
-          kubectl config current-context || true
-          kubectl config view --minify || true
-          # show minikube-wrapped kubectl nodes too
-          echo "minikube kubectl -- get nodes (wrapper):"
-          minikube kubectl -- get nodes || true
-
-      - name: Deploy to Kubernetes (use minikube kubectl wrapper)
+      - name: Deploy to Kubernetes
         id: deploy
         env:
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
           TAG: ${{ needs.build-and-push.outputs.image_tag || 'latest' }}
         run: |
-          set -euo pipefail
-          # Create namespace (use wrapper where possible)
-          minikube kubectl -- create namespace belajar-nodejs --dry-run=client -o yaml | minikube kubectl -- apply -f -
-
-          # Process deployment manifest with envsubst
-          echo "Using image: $DOCKERHUB_USERNAME/belajar-nodejs-dasar:$TAG"
+          set -e
+          
+          # Buat namespace
+          kubectl create namespace belajar-nodejs --dry-run=client -o yaml | kubectl apply -f -
+          
+          # Proses deployment dengan envsubst
+          echo "Menggunakan image: $DOCKERHUB_USERNAME/belajar-nodejs-dasar:$TAG"
           envsubst < k8s/deployment.yaml > /tmp/deployment-processed.yaml
+          
+          # Terapkan dengan validasi dinonaktifkan
+          kubectl apply -f /tmp/deployment-processed.yaml --validate=false
+          kubectl apply -f k8s/service.yaml --validate=false
+          
+          # Tunggu deployment
+          kubectl rollout status deployment/belajar-nodejs-dasar -n belajar-nodejs --timeout=180s
 
+      - name: Verify deployment
+        run: |
+          kubectl get all -n belajar-nodejs
+          kubectl get ingress -n belajar-nodejs || true
+
+      - name: Debug if deployment fails
+        if: failure()
+        run: |
+          echo "=== Deployment gagal, menampilkan informasi debug ==="
+          kubectl get events -A --sort-by='.lastTimestamp' | tail -n 20
+          kubectl get pods -n belajar-nodejs
+          kubectl describe pods -n belajar-nodejs
+          kubectl logs -n belajar-nodejs -l app=belajar-nodejs-dasar --tail=50 || true
           echo "=== File deployment yang diproses ==="
-          cat /tmp/deployment-processed.yaml
-          echo "===================================="
-
-          # Apply manifests via minikube kubectl wrapper to avoid kubeconfig CA issues
-          minikube kubectl -- apply -f /tmp/deployment-processed.yaml
-          minikube kubectl -- apply -f k8s/service.yaml
-
-          # Wait for rollout (wrapper)
-          minikube kubectl -- rollout status deployment/belajar-nodejs-dasar -n belajar-nodejs --timeout=180s
-
-        # If any error, action will fail and next notify job will run (if configured)
+          cat /tmp/deployment-processed.yaml || true
 
   notify:
     needs: [build-and-push, deploy]
@@ -155,7 +160,9 @@ jobs:
           STATUS: ${{ job.status }}
           MESSAGE: |
             ${{ job.status == 'success' && '✅' || '❌' }} Deployment ${{ github.ref_name }}
-            Environment: ${{ contains(github.ref, 'release/') && 'Staging' || 'Production' }}
+            Status: ${{ job.status }}
+            Workflow: ${{ github.workflow }}
             Commit: ${{ github.sha }}
-            URL: ${{ needs.deploy.outputs.url || 'N/A' }}
-            Lihat detail: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            Cluster: $(kubectl config current-context || echo "N/A")
+            Nodes: $(kubectl get nodes --no-headers 2>/dev/null | wc -l || echo "0")
