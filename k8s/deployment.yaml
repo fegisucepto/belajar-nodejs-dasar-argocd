@@ -1,4 +1,3 @@
-# In k8s/deployment.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -6,6 +5,8 @@ metadata:
   namespace: belajar-nodejs
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: belajar-nodejs-dasar

@@ -92,15 +92,20 @@ jobs:
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
           TAG: ${{ needs.build-and-push.outputs.image_tag || 'latest' }}
         run: |
-          # Create namespace if it doesn't exist
+          # Buat namespace
           kubectl create namespace belajar-nodejs --dry-run=client -o yaml | kubectl apply -f -
           
-          # Process deployment with envsubst
-          echo "Deploying image: $DOCKERHUB_USERNAME/belajar-nodejs-dasar:$TAG"
+          # Proses deployment dengan envsubst
+          echo "Menggunakan image: $DOCKERHUB_USERNAME/belajar-nodejs-dasar:$TAG"
           envsubst < k8s/deployment.yaml > /tmp/deployment-processed.yaml
-          kubectl apply -f /tmp/deployment-processed.yaml
           
-          # Apply service
+          # Debug: Tampilkan isi file yang sudah diproses
+          echo "=== File deployment yang diproses ==="
+          cat /tmp/deployment-processed.yaml
+          echo "===================================="
+          
+          # Terapkan konfigurasi
+          kubectl apply -f /tmp/deployment-processed.yaml
           kubectl apply -f k8s/service.yaml
           
           # Debug pods
@@ -108,23 +113,29 @@ jobs:
           kubectl describe deployment -n belajar-nodejs belajar-nodejs-dasar
           kubectl get events -n belajar-nodejs --sort-by='.lastTimestamp'
           
-          # Wait for deployment
+          # Tunggu deployment selesai
           timeout 180 kubectl rollout status deployment/belajar-nodejs-dasar -n belajar-nodejs --timeout=90s || true
           
-          # Get logs if deployment fails
+          # Tampilkan log jika gagal
           if [ $? -ne 0 ]; then
-            echo "Deployment failed, showing pod logs:"
+            echo "Deployment gagal, menampilkan log:"
             kubectl logs -n belajar-nodejs -l app=belajar-nodejs-dasar --tail=50 || true
-            echo "Processed deployment file:"
+            echo "=== File deployment yang diproses ==="
             cat /tmp/deployment-processed.yaml
+            echo "===================================="
             exit 1
           fi
 
       - name: Debug Minikube
+        if: always()
         run: |
+          echo "=== Status Minikube ==="
           minikube status
+          echo "=== Log Minikube ==="
           minikube logs
+          echo "=== Versi kubectl ==="
           kubectl version --client
+          echo "=== Info cluster ==="
           kubectl cluster-info
           
   notify:
