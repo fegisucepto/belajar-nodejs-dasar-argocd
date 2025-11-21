@@ -108,19 +108,19 @@ jobs:
           # Dapatkan kubeconfig dari Minikube
           minikube update-context
           minikube kubectl -- config view --flatten > ~/.kube/config
-          
+    
           # Perbaiki konteks yang salah
           kubectl config set-context --current --namespace=default
           kubectl config use-context minikube
-          
+    
           # Set permissions
           chmod 600 ~/.kube/config
-          
+    
           # Ekspor KUBECONFIG
-          echo "KUBECONFIG=~/.kube/config" >> $GITHUB_ENV
-          echo "KUBECONFIG=~/.kube/config" >> $GITHUB_PATH
-          echo "KUBECONFIG=~/.kube/config" >> /etc/environment
-          
+          export KUBECONFIG=~/.kube/config
+          echo "KUBECONFIG=$KUBECONFIG" >> $GITHUB_ENV
+          echo "KUBECONFIG=$KUBECONFIG" >> $GITHUB_PATH
+    
           # Verifikasi konfigurasi
           echo "=== KUBECONFIG PATH ==="
           echo $KUBECONFIG
