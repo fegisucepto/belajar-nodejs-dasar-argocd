@@ -102,17 +102,13 @@ jobs:
           echo "Waiting for MongoDB to be ready..."
           minikube kubectl -- rollout status deployment/mongo -n belajar-nodejs --timeout=300s
           
-          # Wait for app pod to be created
-          echo "Waiting for app pod to be created..."
-          minikube kubectl -- wait --for=condition=pod scheduled -n belajar-nodejs -l app=belajar-nodejs-dasar --timeout=120s
-          
-          # Wait for app pod to be running
-          echo "Waiting for app pod to be running..."
-          minikube kubectl -- wait --for=condition=ready pod -n belajar-nodejs -l app=belajar-nodejs-dasar --timeout=300s
+          # Wait for app pod to be created and running
+          echo "Waiting for app pod to be ready..."
+          minikube kubectl -- wait --for=condition=ready pod -n belajar-nodejs -l app=belajar-nodejs-dasar --timeout=600s
           
           # Check pod status
           echo "Checking pod status..."
-          minikube kubectl -- get pods -n belajar-nodejs
+          minikube kubectl -- get pods -n belajar-nodejs -o wide
           
           # Wait for app deployment to complete
           echo "Waiting for application deployment to complete..."
@@ -120,7 +116,7 @@ jobs:
           
           # Check app logs after deployment is ready
           echo "Checking application logs..."
-          minikube kubectl -- logs -n belajar-nodejs deployment/belajar-nodejs-dasar --tail=50
+          minikube kubectl -- logs -n belajar-nodejs deployment/belajar-nodejs-dasar --tail=50 || echo "No logs available yet"
           
           # Verify MongoDB connection after app is ready
           echo "Verifying MongoDB connection..."
