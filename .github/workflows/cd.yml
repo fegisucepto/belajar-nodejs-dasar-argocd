@@ -134,21 +134,15 @@ jobs:
     if: always()
     runs-on: ubuntu-latest
     steps:
-      - name: Install kubectl
-        if: always()
+      - name: Get cluster info (if available)
+        id: cluster-info
+        continue-on-error: true
         run: |
-          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-          chmod +x kubectl
-          sudo mv kubectl /usr/local/bin/
-
-      - name: Configure kubeconfig
-        if: always()
-        run: |
-          mkdir -p ~/.kube
-          minikube update-context
-          minikube kubectl -- config view --flatten > ~/.kube/config
-          chmod 600 ~/.kube/config
-          echo "KUBECONFIG=~/.kube/config" >> $GITHUB_ENV
+          if [ -f ~/.kube/config ]; then
+            echo "cluster_context=$(kubectl config current-context 2>/dev/null || echo 'N/A')" >> $GITHUB_OUTPUT
+          else
+            echo "cluster_context=N/A" >> $GITHUB_OUTPUT
+          fi
 
       - name: Send Slack Notification
         uses: rtCamp/action-slack-notify@v2
@@ -160,7 +154,7 @@ jobs:
             *Branch/Tag*: ${{ github.ref_name }}
             *Workflow*: ${{ github.workflow }}
             *Commit*: `${{ github.sha }}`
-            *Cluster*: $(kubectl config current-context 2>/dev/null || echo "N/A")
+            *Cluster*: ${{ steps.cluster-info.outputs.cluster_context }}
             *View Logs*: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           SLACK_COLOR: ${{ job.status == 'success' && '#36a64f' || '#ff0000' }}
           MSG_MINIMAL: "true"
