@@ -55,156 +55,61 @@ jobs:
   deploy:
     needs: build-and-push
     runs-on: ubuntu-latest
-    env:
-      MINIKUBE_HOME: ${{ github.workspace }}/.minikube
-      KUBECONFIG: ${{ github.workspace }}/.kube/config
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install dependencies
+      - name: Install kubectl
         run: |
-          sudo apt-get update
-          sudo apt-get install -y gettext-base curl
-
-      - name: Install kubectl and minikube
-        run: |
-          # Install kubectl
           curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
           chmod +x kubectl
           sudo mv kubectl /usr/local/bin/
-          
-          # Install minikube
-          curl -LO https://github.com/kubernetes/minikube/releases/latest/download/minikube-linux-amd64
-          sudo install minikube-linux-amd64 /usr/local/bin/minikube
-
-      - name: Start Minikube
-        run: |
-          # Hentikan Minikube jika sudah berjalan
-          minikube delete || true
-          
-          # Mulai Minikube dengan opsi yang diperlukan
-          minikube start \
-            --driver=docker \
-            --force \
-            --embed-certs=true \
-            --container-runtime=containerd \
-            --nodes=1 \
-            --cpus=2 \
-            --memory=4g \
-            --disk-size=20g \
-            --addons=ingress,metrics-server \
-            --alsologtostderr \
-            --v=2
-          
-          # Tunggu Minikube siap
-          minikube status
-          minikube kubectl -- get nodes
 
       - name: Configure kubeconfig
         run: |
-          # Buat direktori .kube
           mkdir -p ~/.kube
-          
-          # Dapatkan kubeconfig dari Minikube
-          minikube update-context
-          minikube kubectl -- config view --flatten > ~/.kube/config
-    
-          # Perbaiki konteks yang salah
-          kubectl config set-context --current --namespace=default
-          kubectl config use-context minikube
-    
-          # Set permissions
+          echo "${{ secrets.KUBE_CONFIG }}" > ~/.kube/config
           chmod 600 ~/.kube/config
-    
-          # Ekspor KUBECONFIG
-          export KUBECONFIG=~/.kube/config
-          echo "KUBECONFIG=$KUBECONFIG" >> $GITHUB_ENV
-          echo "KUBECONFIG=$KUBECONFIG" >> $GITHUB_PATH
-    
-          # Verifikasi konfigurasi
-          echo "=== KUBECONFIG PATH ==="
-          echo $KUBECONFIG
-          echo "=== KUBECONFIG CONTENT ==="
-          cat ~/.kube/config || true
-
-      - name: Verify Kubernetes connection
-        run: |
-          # Verifikasi koneksi
-          echo "=== MINIKUBE STATUS ==="
-          minikube status
-          echo "=== K8S VERSION ==="
-          kubectl version  # Hapus --short
-          echo "=== NODES ==="
-          kubectl get nodes -v=6
-          echo "=== CLUSTER INFO ==="
-          kubectl cluster-info
-          echo "=== CONTEXTS ==="
-          kubectl config get-contexts
-          echo "=== CURRENT CONTEXT ==="
-          kubectl config current-context
 
       - name: Deploy to Kubernetes
-        id: deploy
         env:
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
           TAG: ${{ needs.build-and-push.outputs.image_tag || 'latest' }}
         run: |
           set -e
           
-          # Buat namespace
+          # Create namespace if not exists
           kubectl create namespace belajar-nodejs --dry-run=client -o yaml | kubectl apply -f -
           
-          # Proses deployment dengan envsubst
-          echo "Menggunakan image: $DOCKERHUB_USERNAME/belajar-nodejs-dasar:$TAG"
-          envsubst < k8s/deployment.yaml > /tmp/deployment-processed.yaml
+          # Deploy application
+          kubectl apply -f k8s/
           
-          # Terapkan konfigurasi
-          kubectl apply -f /tmp/deployment-processed.yaml --validate=false
-          kubectl apply -f k8s/service.yaml --validate=false
-          
-          # Tunggu deployment
+          # Wait for deployment to complete
           kubectl rollout status deployment/belajar-nodejs-dasar -n belajar-nodejs --timeout=180s
-
-      - name: Verify deployment
-        run: |
-          kubectl get all -n belajar-nodejs
-          kubectl get ingress -n belajar-nodejs || true
-
-      - name: Debug if deployment fails
-        if: failure()
-        run: |
-          echo "=== Deployment gagal, menampilkan informasi debug ==="
-          echo "=== KUBECONFIG ==="
-          ls -la ~/.kube/ || true
-          echo "=== KUBECONFIG CONTENT ==="
-          cat ~/.kube/config || true
-          echo "=== ENV VARIABLES ==="
-          env | grep -i kube
-          echo "=== MINIKUBE STATUS ==="
-          minikube status || true
-          echo "=== KUBECTL VERSION ==="
-          kubectl version || true
-          echo "=== KUBECTL CONFIG ==="
-          kubectl config view || true
-          echo "=== MINIKUBE DOCKER-ENV ==="
-          minikube docker-env || true
-          echo "=== DOCKER INFO ==="
-          docker info || true
-          echo "=== KUBERNETES PODS ==="
-          kubectl get pods -A || true
-          echo "=== KUBERNETES EVENTS ==="
-          kubectl get events -A --sort-by='.lastTimestamp' | tail -n 20 || true
-          echo "=== MINIKUBE LOGS ==="
-          minikube logs || true
 
   notify:
     needs: [build-and-push, deploy]
     if: always()
     runs-on: ubuntu-latest
     steps:
-      - uses: rtCamp/action-slack-notify@v2
+      - name: Install kubectl
+        run: |
+          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+          chmod +x kubectl
+          sudo mv kubectl /usr/local/bin/
+
+      - name: Configure kubeconfig
+        if: always()
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBE_CONFIG }}" > ~/.kube/config
+          chmod 600 ~/.kube/config
+          # Set KUBECONFIG environment variable
+          echo "KUBECONFIG=~/.kube/config" >> $GITHUB_ENV
+
+      - name: Send Slack Notification
+        uses: rtCamp/action-slack-notify@v2
         env:
-          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
           STATUS: ${{ job.status }}
           MESSAGE: |
             ${{ job.status == 'success' && '✅' || '❌' }} Deployment ${{ github.ref_name }}
@@ -212,5 +117,5 @@ jobs:
             Workflow: ${{ github.workflow }}
             Commit: ${{ github.sha }}
             URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-            Cluster: $(kubectl config current-context || echo "N/A")
+            Cluster: $(kubectl config current-context 2>/dev/null || echo "N/A")
             Nodes: $(kubectl get nodes --no-headers 2>/dev/null | wc -l || echo "0")
