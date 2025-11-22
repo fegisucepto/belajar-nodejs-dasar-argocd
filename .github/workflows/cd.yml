@@ -151,6 +151,16 @@ jobs:
           }
           
           echo "Deployment completed successfully!"
+          
+          # Test external access
+          echo "Testing external access..."
+          minikube service belajar-nodejs-dasar -n belajar-nodejs --url
+          minikube kubectl -- exec -n belajar-nodejs deployment/belajar-nodejs-dasar -- curl -s http://localhost:3000/health || echo "Health check failed"
+          
+          # Get service URL for external access
+          SERVICE_URL=$(minikube service belajar-nodejs-dasar -n belajar-nodejs --url)
+          echo "Service available at: $SERVICE_URL"
+          echo "Health endpoint: $SERVICE_URL/health"
 
   notify:
     needs: [build-and-push, deploy]
