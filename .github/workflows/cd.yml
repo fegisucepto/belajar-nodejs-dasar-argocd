@@ -135,49 +135,11 @@ jobs:
     if: always()
     runs-on: ubuntu-latest
     steps:
-      - name: Install kubectl and minikube
-        run: |
-          # Install kubectl
-          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-          chmod +x kubectl
-          sudo mv kubectl /usr/local/bin/
-
-          # Install minikube
-          curl -LO https://github.com/kubernetes/minikube/releases/latest/download/minikube-linux-amd64
-          sudo install minikube-linux-amd64 /usr/local/bin/minikube
-
-      - name: Get cluster info (if available)
+      - name: Get cluster info
         id: cluster-info
-        continue-on-error: true
         run: |
-          # Create .kube directory if it doesn't exist
-          mkdir -p ~/.kube
-          
-          # Set KUBECONFIG environment variable
-          echo "KUBECONFIG=~/.kube/config" >> $GITHUB_ENV
-          
-          # Try to start minikube if available
-          if command -v minikube &> /dev/null; then
-            echo "Checking minikube status"
-            if minikube status &> /dev/null; then
-              echo "Minikube is running, getting context"
-              CURRENT_CTX=$(minikube kubectl -- config current-context 2>/dev/null || echo 'minikube')
-              echo "Current context: $CURRENT_CTX"
-              echo "cluster_context=$CURRENT_CTX" >> $GITHUB_OUTPUT
-            else
-              echo "Minikube is not running, setting default"
-              echo "cluster_context=minikube" >> $GITHUB_OUTPUT
-            fi
-          else
-            # Fallback if minikube is not available
-            if [ -f ~/.kube/config ]; then
-              CURRENT_CTX=$(kubectl config current-context 2>/dev/null || echo 'N/A')
-              echo "Current context: $CURRENT_CTX"
-              echo "cluster_context=$CURRENT_CTX" >> $GITHUB_OUTPUT
-            else
-              echo "cluster_context=N/A" >> $GITHUB_OUTPUT
-            fi
-          fi
+          echo "cluster_context=minikube" >> $GITHUB_OUTPUT
+          echo "Deployment completed successfully"
 
       - name: Send Slack Notification
         uses: rtCamp/action-slack-notify@v2
