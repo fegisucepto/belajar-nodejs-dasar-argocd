@@ -10,3 +10,16 @@ spec:
   - port: 80
     targetPort: 3000
   type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongo
+  namespace: belajar-nodejs
+spec:
+  selector:
+    app: belajar-nodejs-dasar
+  ports:
+  - port: 27017
+    targetPort: 27017
+  type: ClusterIP
