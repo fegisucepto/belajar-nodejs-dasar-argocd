@@ -78,33 +78,19 @@ jobs:
           kubectl cluster-info
           kubectl get nodes
       
-      - name: Authenticate to Google Cloud
-        env:
-          GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+      - name: Deploy to Minikube
         run: |
-          source $HOME/google-cloud-sdk/path.bash.inc
-          echo "$GCP_SA_KEY" > gcp-key.json
-          gcloud auth activate-service-account --key-file=gcp-key.json
-          gcloud config set project polar-arbor-469013-i6
-          gcloud auth configure-docker --quiet
+          echo "Deploying to Minikube cluster..."
           
-          # Test authentication
-          echo "Testing GCP authentication..."
-          gcloud auth list
-          gcloud container clusters list --project=polar-arbor-469013-i6
-          gke-gcloud-auth-plugin version
-      
-      - name: Configure kubectl for cluster
-        env:
-          KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
-        run: |
-          mkdir -p ~/.kube
-          if [ -z "$KUBE_CONFIG" ]; then
-            echo "KUBE_CONFIG secret is not set"
-            exit 1
-          fi
-          echo "$KUBE_CONFIG" | base64 -d > ~/.kube/config
-          kubectl cluster-info
+          # Apply Kubernetes manifests
+          kubectl apply -f k8s/
+          
+          # Wait for deployment
+          kubectl wait --for=condition=available --timeout=300s deployment/belajar-nodejs-dasar-argocd || echo "Deployment may take longer"
+          
+          # Show status
+          kubectl get pods -l app=belajar-nodejs-dasar-argocd
+          kubectl get services
       
       - name: Deploy Argo CD Application
         run: |
