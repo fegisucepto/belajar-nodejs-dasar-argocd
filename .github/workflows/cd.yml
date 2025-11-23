@@ -139,17 +139,27 @@ jobs:
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
           TAG: ${{ needs.build-and-push.outputs.image_tag || 'latest' }}
         run: |
-          echo "Updating deployment with new image: ${TAG}"
+          echo "Updating image tag to ${TAG} for Argo CD..."
+          
+          # Setup git config first
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          
+          # Update image tag di deployment.yaml
+          sed -i "s|image: ${DOCKERHUB_USERNAME}/belajar-nodejs-dasar-argocd:latest|image: ${DOCKERHUB_USERNAME}/belajar-nodejs-dasar-argocd:${TAG}|g" k8s/deployment.yaml
+          
+          # Commit dan push perubahan ke Git untuk trigger Argo CD
+          git add k8s/deployment.yaml
           git commit -m "feat: Update image tag to ${TAG}
 
-            Automated update from GitHub Actions
-            Image: ${DOCKERHUB_USERNAME}/belajar-nodejs-dasar-argocd:${TAG}
-            Trigger: Argo CD will sync automatically
+🤖 Automated update from GitHub Actions
+📦 Image: ${DOCKERHUB_USERNAME}/belajar-nodejs-dasar-argocd:${TAG}
+🚀 Trigger: Argo CD will sync automatically
 
-            [skip ci]"
-          kubectl rollout status deployment/belajar-nodejs-dasar --timeout=300s
+[skip ci]"
+          git push
           
-          # Show final status
+          echo "✅ Image tag updated, Argo CD will sync automatically"
           kubectl get pods -o wide
           kubectl get services
 
