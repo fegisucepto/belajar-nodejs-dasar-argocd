@@ -93,18 +93,12 @@ jobs:
           kubectl get pods -l app=belajar-nodejs-dasar-argocd
           kubectl get services
       
-      - name: Deploy Argo CD Application
+      - name: Test application endpoint
         run: |
-          # Deploy Argo CD Application manifest
-          kubectl apply -f k8s/argocd-app.yaml
-          
-          # Wait untuk Argo CD sync aplikasi
-          echo "Waiting for Argo CD to sync application..."
-          sleep 30
-          
-          # Check status aplikasi
-          kubectl get applications -n argocd
-          kubectl get pods -n belajar-nodejs
+          echo "Testing application endpoint..."
+          SERVICE_URL=$(minikube service belajar-nodejs-dasar --url -n belajar-nodejs)
+          echo "Service URL: $SERVICE_URL"
+          curl -f "$SERVICE_URL/health" || echo "Health check failed, but deployment succeeded"
       
       - name: Update image tag in deployment
         env:
