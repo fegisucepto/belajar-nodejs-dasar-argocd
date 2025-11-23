@@ -82,8 +82,9 @@ jobs:
         run: |
           echo "Deploying to Minikube cluster..."
           
-          # Apply Kubernetes manifests
-          kubectl apply -f k8s/
+          # Apply Kubernetes manifests (exclude Argo CD)
+          kubectl apply -f k8s/deployment.yaml
+          kubectl apply -f k8s/service.yaml
           
           # Wait for deployment
           kubectl wait --for=condition=available --timeout=300s deployment/belajar-nodejs-dasar-argocd || echo "Deployment may take longer"
