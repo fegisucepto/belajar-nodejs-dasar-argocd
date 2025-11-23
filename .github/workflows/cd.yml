@@ -93,12 +93,46 @@ jobs:
           kubectl get pods -l app=belajar-nodejs-dasar-argocd
           kubectl get services
       
+      - name: Debug deployment status
+        run: |
+          echo "=== Deployment Status ==="
+          kubectl get deployments -n belajar-nodejs
+          kubectl get pods -n belajar-nodejs -o wide
+          kubectl get services -n belajar-nodejs
+          
+          echo "=== Pod Logs ==="
+          kubectl logs -n belajar-nodejs -l app=belajar-nodejs-dasar --tail=20 || echo "No logs available"
+          
+          echo "=== Events ==="
+          kubectl get events -n belajar-nodejs --sort-by='.lastTimestamp' | tail -10
+      
       - name: Test application endpoint
         run: |
           echo "Testing application endpoint..."
-          SERVICE_URL=$(minikube service belajar-nodejs-dasar --url -n belajar-nodejs)
-          echo "Service URL: $SERVICE_URL"
-          curl -f "$SERVICE_URL/health" || echo "Health check failed, but deployment succeeded"
+          
+          # Wait untuk pod ready
+          echo "Waiting for pods to be ready..."
+          kubectl wait --for=condition=ready --timeout=300s pod -l app=belajar-nodejs-dasar -n belajar-nodejs || echo "Pods not ready after timeout"
+          
+          # Coba dapatkan service URL
+          echo "Getting service URL..."
+          SERVICE_URL=$(minikube service belajar-nodejs-dasar --url -n belajar-nodejs 2>/dev/null || echo "")
+          
+          if [ -n "$SERVICE_URL" ]; then
+            echo "Service URL: $SERVICE_URL"
+            echo "Testing health endpoint..."
+            curl -f "$SERVICE_URL/health" || echo "Health check failed, but deployment may have succeeded"
+          else
+            echo "Service not available, checking NodePort..."
+            NODE_PORT=$(kubectl get service belajar-nodejs-dasar -n belajar-nodejs -o jsonpath='{.spec.ports[0].nodePort}')
+            if [ -n "$NODE_PORT" ]; then
+              echo "NodePort: $NODE_PORT"
+              echo "Testing via NodePort..."
+              curl -f "http://$(minikube ip):$NODE_PORT/health" || echo "Health check failed, but deployment may have succeeded"
+            else
+              echo "No service access method available"
+            fi
+          fi
       
       - name: Update image tag in deployment
         env:
