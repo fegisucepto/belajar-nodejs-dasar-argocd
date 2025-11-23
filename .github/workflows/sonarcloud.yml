@@ -1,7 +1,9 @@
 name: SonarCloud
 on:
   push:
-    branches: [ main ]
+    branches: [ main, 'release/*' ]
+    tags:
+      - 'v*'
   pull_request:
     types: [opened, synchronize, reopened]
 jobs:
@@ -29,4 +31,4 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: npx sonarqube-scanner -Dsonar.organization=fegisucepto -Dsonar.projectKey=fegisucepto_belajar-nodejs-dasar
+        run: npx sonarqube-scanner -Dsonar.organization=fegisucepto -Dsonar.projectKey=fegisucepto_belajar-nodejs-dasar-argocd
