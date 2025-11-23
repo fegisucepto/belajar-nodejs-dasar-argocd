@@ -58,21 +58,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Install kubectl and gcloud
+      - name: Install kubectl
         run: |
-          # Install kubectl
           curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
           chmod +x kubectl
           sudo mv kubectl /usr/local/bin/
+      
+      - name: Setup Minikube for local testing
+        run: |
+          # Install Minikube
+          curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+          chmod +x minikube-linux-amd64
+          sudo mv minikube-linux-amd64 /usr/local/bin/minikube
           
-          # Install gcloud CLI
-          curl https://sdk.cloud.google.com | bash
-          source $HOME/google-cloud-sdk/path.bash.inc
-          gcloud version
+          # Start Minikube
+          minikube start --driver=docker
           
-          # Install gke-gcloud-auth-plugin
-          gcloud components install gke-gcloud-auth-plugin
-          gke-gcloud-auth-plugin version
+          # Verify cluster
+          kubectl cluster-info
+          kubectl get nodes
       
       - name: Authenticate to Google Cloud
         env:
