@@ -46,8 +46,8 @@ jobs:
           context: .
           push: true
           tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/belajar-nodejs-dasar:${{ steps.get_tag.outputs.tag_name }}
-            ${{ secrets.DOCKERHUB_USERNAME }}/belajar-nodejs-dasar:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/belajar-nodejs-dasar-argocd:${{ steps.get_tag.outputs.tag_name }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/belajar-nodejs-dasar-argocd:latest
           platforms: linux/amd64
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -57,110 +57,78 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Install kubectl and minikube
+      
+      - name: Install kubectl
         run: |
-          # Install kubectl
           curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
           chmod +x kubectl
           sudo mv kubectl /usr/local/bin/
-
-          # Install minikube
-          curl -LO https://github.com/kubernetes/minikube/releases/latest/download/minikube-linux-amd64
-          sudo install minikube-linux-amd64 /usr/local/bin/minikube
-
-      - name: Start Minikube
+      
+      - name: Configure kubectl for cluster
+        env:
+          KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
         run: |
-          # Stop and clean Minikube
-          minikube delete || true
-          
-          # Start Minikube with simple configuration
-          minikube start \
-            --driver=docker \
-            --cpus=2 \
-            --memory=4g \
-            --kubernetes-version=stable \
-            --wait=true
-          
-          # Wait for Minikube to be ready
-          minikube status
-
-      - name: Build Docker Image in Minikube
+          echo "$KUBE_CONFIG" | base64 -d > ~/.kube/config
+          kubectl cluster-info
+      
+      - name: Deploy Argo CD Application
         run: |
-          set -e
+          # Deploy Argo CD Application manifest
+          kubectl apply -f k8s/argocd-app.yaml
           
-          # Build Docker image in Minikube
-          eval $(minikube docker-env)
-          docker build -t fegisucepto/belajar-nodejs-dasar:latest .
-          docker images | grep belajar-nodejs-dasar
+          # Wait untuk Argo CD sync aplikasi
+          echo "Waiting for Argo CD to sync application..."
+          sleep 30
           
-      - name: Deploy to Kubernetes
+          # Check status aplikasi
+          kubectl get applications -n argocd
+          kubectl get pods -n belajar-nodejs
+      
+      - name: Update image tag in deployment
         env:
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
           TAG: ${{ needs.build-and-push.outputs.image_tag || 'latest' }}
         run: |
-          set -e
+          # Update image tag di deployment.yaml
+          sed -i "s|image: ${DOCKERHUB_USERNAME}/belajar-nodejs-dasar-argocd:latest|image: ${DOCKERHUB_USERNAME}/belajar-nodejs-dasar-argocd:${TAG}|g" k8s/deployment.yaml
           
-          # Create namespace if not exists
-          minikube kubectl -- create namespace belajar-nodejs --dry-run=client -o yaml | minikube kubectl -- apply -f -
+          # Commit dan push perubahan ke Git untuk trigger Argo CD
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git add k8s/deployment.yaml
+          git commit -m >
+            "feat: Update image tag to ${TAG} for Argo CD deployment
+
+            🤖 Automated update from GitHub Actions
+            📦 Image: ${DOCKERHUB_USERNAME}/belajar-nodejs-dasar-argocd:${TAG}
+            🚀 Trigger: Argo CD will sync automatically
+
+            [skip ci]"
+          git push
           
-          # Deploy application
-          minikube kubectl -- apply -f k8s/ -n belajar-nodejs
+          # Jika ini adalah tag release, buat tag baru
+          if [[ "${TAG}" == v* ]]; then
+            echo "Creating release tag: ${TAG}"
+            git tag -a "${TAG}" -m |
+              Release ${TAG}
+
+              🚀 Automated Release
+              📦 Image: ${DOCKERHUB_USERNAME}/belajar-nodejs-dasar-argocd:${TAG}
+              🔄 Deployed via Argo CD
+              ⏰ Date: $(date -u)
+              📝 Commit: ${GITHUB_SHA}
+            git push origin "${TAG}"
+            echo "✅ Tag ${TAG} created and pushed"
+          else
+            echo "🔄 Updated image tag to ${TAG} (not a release tag)"
+          fi
           
-          # Wait for MongoDB to be ready
-          echo "Waiting for MongoDB to be ready..."
-          minikube kubectl -- rollout status deployment/mongo -n belajar-nodejs --timeout=300s
+          # Wait untuk Argo CD sync
+          echo "Waiting for Argo CD to sync new image..."
+          sleep 60
           
-          # Check pod status immediately after deployment
-          echo "Checking initial pod status..."
-          minikube kubectl -- get pods -n belajar-nodejs -o wide
-          
-          # Wait a bit for pod to start
-          echo "Waiting 30 seconds for pod initialization..."
-          sleep 30
-          
-          # Check pod status again
-          echo "Checking pod status after initialization..."
-          minikube kubectl -- get pods -n belajar-nodejs -o wide
-          
-          # Check app logs to see what's happening
-          echo "Checking application logs..."
-          minikube kubectl -- logs -n belajar-nodejs -l app=belajar-nodejs-dasar --tail=50 || echo "No logs available"
-          
-          # Check MongoDB connection from app perspective
-          echo "Testing MongoDB connectivity..."
-          minikube kubectl -- exec -n belajar-nodejs deployment/mongo -- mongosh --eval "db.adminCommand('ping')" || echo "MongoDB not responding"
-          
-          # Check MongoDB service connectivity
-          echo "Checking MongoDB service..."
-          minikube kubectl -- get svc -n belajar-nodejs
-          
-          # Try to check app environment
-          echo "Checking app environment..."
-          minikube kubectl -- exec -n belajar-nodejs deployment/belajar-nodejs-dasar -- env | grep -E '(NODE_ENV|PORT|MONGO_URI)' || echo "Cannot access app container"
-          
-          # Wait for deployment with extended timeout and better error handling
-          echo "Waiting for deployment completion (this may take several minutes)..."
-          minikube kubectl -- rollout status deployment/belajar-nodejs-dasar -n belajar-nodejs --timeout=1200s || {
-            echo "Deployment timeout - checking final status..."
-            minikube kubectl -- get pods -n belajar-nodejs -o wide
-            minikube kubectl -- describe deployment belajar-nodejs-dasar -n belajar-nodejs
-            echo "Final app logs..."
-            minikube kubectl -- logs -n belajar-nodejs -l app=belajar-nodejs-dasar --tail=100 || echo "Cannot get logs"
-            exit 1
-          }
-          
-          echo "Deployment completed successfully!"
-          
-          # Test external access
-          echo "Testing external access..."
-          minikube service belajar-nodejs-dasar -n belajar-nodejs --url
-          minikube kubectl -- exec -n belajar-nodejs deployment/belajar-nodejs-dasar -- curl -s http://localhost:3000/health || echo "Health check failed"
-          
-          # Get service URL for external access
-          SERVICE_URL=$(minikube service belajar-nodejs-dasar -n belajar-nodejs --url)
-          echo "Service available at: $SERVICE_URL"
-          echo "Health endpoint: $SERVICE_URL/health"
+          # Check final status
+          kubectl get pods -n belajar-nodejs -o wide
 
   notify:
     needs: [build-and-push, deploy]
