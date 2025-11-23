@@ -76,12 +76,18 @@ jobs:
       
       - name: Authenticate to Google Cloud
         env:
-          GCP_ACCESS_TOKEN: ${{ secrets.GCP_ACCESS_TOKEN }}
+          GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
         run: |
           source $HOME/google-cloud-sdk/path.bash.inc
-          echo "$GCP_ACCESS_TOKEN" | gcloud auth login --access-token=stdin --no-launch-browser
-          gcloud config set project polar-arbor-469013
+          echo "$GCP_SA_KEY" > gcp-key.json
+          gcloud auth activate-service-account --key-file=gcp-key.json
+          gcloud config set project polar-arbor-469013-i6
           gcloud auth configure-docker --quiet
+          
+          # Test authentication
+          echo "Testing GCP authentication..."
+          gcloud auth list
+          gcloud container clusters list --project=polar-arbor-469013-i6
           gke-gcloud-auth-plugin version
       
       - name: Configure kubectl for cluster
