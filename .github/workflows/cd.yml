@@ -150,13 +150,14 @@ jobs:
           
           # Commit dan push perubahan ke Git untuk trigger Argo CD
           git add k8s/deployment.yaml
-          git commit -m "feat: Update image tag to ${TAG}
-
-🤖 Automated update from GitHub Actions
-📦 Image: ${DOCKERHUB_USERNAME}/belajar-nodejs-dasar-argocd:${TAG}
-🚀 Trigger: Argo CD will sync automatically
-
-[skip ci]"
+          git commit -m |
+            feat: Update image tag to ${TAG}
+            
+            🤖 Automated update from GitHub Actions
+            📦 Image: ${DOCKERHUB_USERNAME}/belajar-nodejs-dasar-argocd:${TAG}
+            🚀 Trigger: Argo CD will sync automatically
+            
+            [skip ci]
           git push
           
           echo "✅ Image tag updated, Argo CD will sync automatically"
