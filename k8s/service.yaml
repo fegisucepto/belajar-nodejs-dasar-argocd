@@ -24,3 +24,24 @@ spec:
   - port: 27017
     targetPort: 27017
   type: ClusterIP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: belajar-nodejs-dasar-ingress
+  namespace: belajar-nodejs
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: belajar-nodejs-argocd.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: belajar-nodejs-dasar
+            port:
+              number: 80

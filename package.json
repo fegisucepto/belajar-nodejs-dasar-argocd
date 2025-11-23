@@ -35,5 +35,16 @@
     "nodemon": "^3.0.1",
     "sonarqube-scanner": "^4.3.2",
     "supertest": "^7.1.4"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fegisucepto/belajar-nodejs-dasar-argocd.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/fegisucepto/belajar-nodejs-dasar-argocd/issues"
+  },
+  "homepage": "https://github.com/fegisucepto/belajar-nodejs-dasar-argocd#readme"
 }
