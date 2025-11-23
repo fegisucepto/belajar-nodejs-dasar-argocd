@@ -164,7 +164,7 @@ jobs:
 
               🚀 Automated Release
               📦 Image: ${DOCKERHUB_USERNAME}/belajar-nodejs-dasar-argocd:${TAG}
-              🔄 Deployed via Argo CD
+              🔄 Deployed via Minikube
               ⏰ Date: $(date -u)
               📝 Commit: ${GITHUB_SHA}
             git push origin "${TAG}"
