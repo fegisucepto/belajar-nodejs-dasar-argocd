@@ -3,12 +3,22 @@ kind: Application
 metadata:
   name: belajar-nodejs-dasar
   namespace: argocd
+  labels:
+    app: belajar-nodejs-dasar
+    environment: production
+  annotations:
+    argocd.argoproj.io/sync-options: CreateNamespace=true
+    argocd.argoproj.io/compare-options: IgnoreExtraneous
 spec:
   project: default
   source:
     repoURL: https://github.com/fegisucepto/belajar-nodejs-dasar-argocd.git
     targetRevision: main
     path: k8s
+    directory:
+      recurse: true
+    plugins:
+      - name: argocd-vault-plugin
   destination:
     server: https://kubernetes.default.svc
     namespace: belajar-nodejs
@@ -16,5 +26,21 @@ spec:
     automated:
       prune: true
       selfHeal: true
+      allowEmpty: true
     syncOptions:
-    - CreateNamespace=true
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+      - RespectIgnoreDifferences=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/replicas
+  revisionHistoryLimit: 10

@@ -1,4 +1,4 @@
-name: Continuous Deployment
+name: ArgoCD Continuous Deployment
 
 on:
   push:
@@ -7,18 +7,56 @@ on:
     branches:
       - 'release/*'
       - 'main'
+      - 'develop'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'local'
+        type: choice
+        options:
+        - local
+        - staging
+        - production
+      force_sync:
+        description: 'Force ArgoCD sync'
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
   id-token: write
+
+env:
+  DOCKER_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/belajar-nodejs-dasar-argocd
+  APP_NAME: belajar-nodejs-dasar
+  NAMESPACE: belajar-nodejs
 
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
     outputs:
       image_tag: ${{ steps.get_tag.outputs.tag_name }}
+      environment: ${{ steps.env.outputs.environment }}
     steps:
       - uses: actions/checkout@v4
+
+      - name: Determine environment
+        id: env
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            ENVIRONMENT="${{ github.event.inputs.environment }}"
+          elif [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            ENVIRONMENT="production"
+          elif [[ "${GITHUB_REF#refs/heads/}" == "main" ]]; then
+            ENVIRONMENT="staging"
+          else
+            ENVIRONMENT="local"
+          fi
+          echo "environment=$ENVIRONMENT" >> $GITHUB_OUTPUT
+          echo "Deploying to: $ENVIRONMENT"
 
       - name: Get tag
         id: get_tag
@@ -46,8 +84,9 @@ jobs:
           context: .
           push: true
           tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/belajar-nodejs-dasar-argocd:${{ steps.get_tag.outputs.tag_name }}
-            ${{ secrets.DOCKERHUB_USERNAME }}/belajar-nodejs-dasar-argocd:latest
+            ${{ env.DOCKER_IMAGE }}:${{ steps.get_tag.outputs.tag_name }}
+            ${{ env.DOCKER_IMAGE }}:latest
+            ${{ env.DOCKER_IMAGE }}:${{ steps.env.outputs.environment }}
           platforms: linux/amd64
           cache-from: type=gha
           cache-to: type=gha,mode=max
