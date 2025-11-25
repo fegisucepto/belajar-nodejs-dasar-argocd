@@ -71,7 +71,12 @@ jobs:
         run: npm test -- --coverage
         env:
           NODE_ENV: test
-      
+          
+      - name: Run SonarCloud scanner
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: npx sonarqube-scanner -Dsonar.organization=fegisucepto -Dsonar.projectKey=fegisucepto_belajar-nodejs-dasar-argocd -Dsonar.automatic=disabled
       # 10. Security Check
       - name: Audit Dependencies
         run: npm audit --production

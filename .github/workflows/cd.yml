@@ -190,10 +190,16 @@ jobs:
           # Update image tag di deployment.yaml
           sed -i "s|image: ${DOCKERHUB_USERNAME}/belajar-nodejs-dasar-argocd:latest|image: ${DOCKERHUB_USERNAME}/belajar-nodejs-dasar-argocd:${TAG}|g" k8s/deployment.yaml
           
-          # Commit dan push perubahan
-          git add k8s/deployment.yaml
-          git commit -m "feat: Update image tag to ${TAG} for ${ENVIRONMENT} [skip ci]"
-          git push
+          # Check if there are changes to commit
+          if git diff --quiet k8s/deployment.yaml; then
+            echo "No changes to commit in deployment.yaml - image tag may already be updated"
+          else
+            # Commit dan push perubahan
+            git add k8s/deployment.yaml
+            git commit -m "feat: Update image tag to ${TAG} for ${ENVIRONMENT} [skip ci]"
+            git push
+            echo "Changes committed and pushed successfully"
+          fi
           
           echo "✅ Image tag updated, Argo CD will sync automatically"
           kubectl get pods -o wide
