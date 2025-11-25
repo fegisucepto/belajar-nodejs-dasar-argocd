@@ -189,15 +189,7 @@ jobs:
           
           # Commit dan push perubahan
           git add k8s/deployment.yaml
-          git commit -m |
-            feat: Update image tag to ${TAG} for ${ENVIRONMENT}
-
-            🤖 Automated update from GitHub Actions
-            📦 Image: ${{ env.DOCKER_IMAGE }}:${TAG}
-            🌍 Environment: ${ENVIRONMENT}
-            🚀 Trigger: ArgoCD will sync automatically
-
-            [skip ci]
+          git commit -m "feat: Update image tag to ${TAG} for ${ENVIRONMENT} [skip ci]"
           git push
           
           echo "✅ Image tag updated, Argo CD will sync automatically"
