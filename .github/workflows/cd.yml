@@ -187,15 +187,16 @@ jobs:
           # Update image tag di deployment.yaml
           sed -i "s|image: ${DOCKERHUB_USERNAME}/belajar-nodejs-dasar-argocd:latest|image: ${DOCKERHUB_USERNAME}/belajar-nodejs-dasar-argocd:${TAG}|g" k8s/deployment.yaml
           
-          # Commit dan push perubahan ke Git untuk trigger Argo CD
+          # Commit dan push perubahan
           git add k8s/deployment.yaml
           git commit -m |
-            feat: Update image tag to ${TAG}
-            
+            feat: Update image tag to ${TAG} for ${ENVIRONMENT}
+
             🤖 Automated update from GitHub Actions
-            📦 Image: ${DOCKERHUB_USERNAME}/belajar-nodejs-dasar-argocd:${TAG}
-            🚀 Trigger: Argo CD will sync automatically
-            
+            📦 Image: ${{ env.DOCKER_IMAGE }}:${TAG}
+            🌍 Environment: ${ENVIRONMENT}
+            🚀 Trigger: ArgoCD will sync automatically
+
             [skip ci]
           git push
           
