@@ -20,7 +20,7 @@ spec:
     spec:
       containers:
       - name: app
-        image: fegisucepto/belajar-nodejs-dasar-argocd:latest
+        image: fegisp/belajar-nodejs-dasar-argocd:latest
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 3000
