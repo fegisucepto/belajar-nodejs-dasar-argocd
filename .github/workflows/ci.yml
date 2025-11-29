@@ -4,19 +4,14 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
   workflow_dispatch:
-
-env:
-  NODE_ENV: test
-  CI: true
 
 jobs:
   test:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        node-version: [18.x, 20.x]
+        node-version: [18.x]
         os: [ubuntu-latest]
       fail-fast: false
     
@@ -30,30 +25,7 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
           cache: 'npm'
-      
-      # 3. Cache Dependencies
-      - name: Cache Dependencies
-        uses: actions/cache@v3
-        with:
-          path: ~/.npm
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
-      
-      # 4. Notifikasi Start
-      - name: Notify Slack - Success
-        if: success()
-        uses: rtCamp/action-slack-notify@v2
-        env:
-          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
-          STATUS: SUCCESS
-          MESSAGE: |
-            ✅ Build ${{ github.workflow }} #${{ github.run_number }} berhasil!
-            Node.js: ${{ matrix.node-version }}
-            Branch: ${{ github.ref_name }}
-            Commit: ${{ github.sha }}
-            Lihat detail: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-      
+
       # 5. Install Dependencies
       - name: Install Dependencies
         run: npm ci
@@ -71,27 +43,28 @@ jobs:
         run: npm test -- --coverage
         env:
           NODE_ENV: test
-          
-      - name: Run SonarCloud scanner
+      
+      # 10. SonarQube Scanner
+      - name: Run SonarQube Scanner
+        uses: SonarSource/sonarqube-scan-action@v6.0.0
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: npx sonarqube-scanner -Dsonar.organization=fegisucepto -Dsonar.projectKey=fegisucepto_belajar-nodejs-dasar-argocd -Dsonar.automatic=disabled
+        with:
+          args: >
+            -Dsonar.organization=fegisucepto
+            -Dsonar.projectKey=fegisucepto_belajar-nodejs-dasar
+
+        # Check the Quality Gate status.
+      - name: SonarQube Quality Gate check
+        id: sonarqube-quality-gate-check
+        uses: sonarsource/sonarqube-quality-gate-action@master
+        with:
+          pollingTimeoutSec: 600
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      
       # 10. Security Check
       - name: Audit Dependencies
         run: npm audit --production
         continue-on-error: true
       
-      # 11. Notifikasi Hasil
-      - name: Notify Slack - Result
-        if: always()
-        uses: rtCamp/action-slack-notify@v2
-        env:
-          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
-          STATUS: ${{ job.status }}
-          MESSAGE: |
-            ${{ job.status == 'success' && '✅' || '❌' }} Build ${{ github.workflow }} #${{ github.run_number }}
-            Node.js: ${{ matrix.node-version }} | OS: ${{ matrix.os }}
-            Branch: ${{ github.ref_name }} | Commit: ${{ github.sha }}
-            Status: ${{ job.status }}
-            Lihat detail: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
